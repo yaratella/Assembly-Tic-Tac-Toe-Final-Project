@@ -1,59 +1,78 @@
-;inputHandler.asm
-;Yara Zrigan
-;15 November 2024
-;Handles User input for the game
+; inputHandler.asm
+; Yara Zrigan
+; 15 November 2024
+; Handles user input for the game.
+;Uses ReadColsoleA to get user input for row and column choices
+;Validates the move (makes sure the cell is within bounds and is empty)
 
-EXTERN currentPlayer:BYTE    ; Reference to the current player in gameLogic.asm
-EXTERN board:BYTE            ; Reference to the board array in boardManager.asm
+.386P
+.model flat
+
+extern currentPlayer:BYTE
+extern board:BYTE
+extern printString:PROC
+extern printChar:PROC
+extern PLAYER_X:BYTE
+extern PLAYER_O:BYTE
+extern _ReadConsoleA@20: near
+extern _GetStdHandle@4: near    
 
 .data
 promptRow db 'Enter Row (1-5): ', 0
 promptCol db 'Enter Column (1-5): ', 0
 invalidMoveMsg db 'Invalid move. Try again.', 13, 10, 0
+buffer db 2, 0           ; Buffer for input
 
 .code
+;Read the user input with the row (1-5) and colum (1-5)
+getUserInput PROC
+    ; Function to get a single character input from user using Windows API (ReadConsoleA)
+    push -11                  ; STD_INPUT_HANDLE = -11
+    call _GetStdHandle@4      ; Call GetStdHandle to get the input handle
+    mov ebx, eax              ; store input
+    lea edx, buffer           
+    push 0                    ; set to 0
+    push 1                    ; Number of characters to read
+    push edx                  ; Buffer address
+    push ebx                  ; Input handle
+    call _ReadConsoleA@20     ; Call ReadConsoleA to get user input
+    ret
+getUserInput ENDP
+
 getPlayerInput PROC
-    ; This function captures and validates the row and column inputs from the player.
-    ; Returns in DX = row (0-4), CX = column (0-4)
-
 inputLoop:
-    ; Prompt for row
-    mov dx, OFFSET promptRow
-    call printString
-    call getUserInput      ; Assume this captures a single character as input
-    sub al, '1'            ; Convert ASCII to row index (0-based)
-    mov dl, al             ; Store row in DL for later use
-
-    ; Prompt for column
-    mov dx, OFFSET promptCol
+    mov edx, OFFSET promptRow  
     call printString
     call getUserInput
-    sub al, '1'            ; Convert ASCII to column index (0-based)
-    mov cl, al             ; Store column in CL
+    sub al, '1'                 ; Convert input to 0-4 range (row)
+    mov dl, al                  ; Store row in dl
 
-    ; Validate input
-    cmp dl, 4              ; Check if row is within range (0-4)
-    jae invalidInput
-    cmp cl, 4              ; Check if column is within range (0-4)
-    jae invalidInput
+    mov edx, OFFSET promptCol   
+    call printString
+    call getUserInput
+    sub al, '1'                 ; Convert input to 0-4 range (column)
+    mov cl, al                  ; Store column in cl
 
-    ; Calculate index in the board array
-    mov ax, dx
-    imul ax, 5             ; Multiply row by 5
-    add ax, cx             ; Add column index to get board index
-    mov bx, ax             ; Move board index to BX
-    mov al, board[bx]      ; Load board cell into AL
+    cmp dl, 4
+    jae invalidInput            ; Check if row is out of range (0-4)
+    cmp cl, 4
+    jae invalidInput            ; Check if column is out of range (0-4)
 
-    ; Check if cell is empty
-    cmp al, '-'            ; Is cell empty?
-    jne invalidInput       ; If not, go back to input loop
+    mov ax, dx                  ; Use dx for row (dl) and column (cl)
+    imul ax, 5                  ; Multiply row by 5 (board width)
+    add ax, cx                  ; Add column to get the correct index
+    mov bx, ax
+    mov al, board[bx]           ; Check if the selected cell is empty ('-')
+    cmp al, '-'
+    jne invalidInput            ; If not empty, move is invalid
 
-    ret                    ; Valid input, return to caller
+    ret
 
 invalidInput:
-    ; Display invalid move message and retry
-    mov dx, OFFSET invalidMoveMsg
-    call printString
-    jmp inputLoop          ; Loop back to get valid input
+    mov edx, OFFSET invalidMoveMsg  
+    call printString            ;Prints message to tell player that they have an invalid move
+    jmp inputLoop
 
 getPlayerInput ENDP
+
+END

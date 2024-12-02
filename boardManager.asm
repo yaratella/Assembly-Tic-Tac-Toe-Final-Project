@@ -1,18 +1,26 @@
 ; boardManager.asm
-;Yara Zrigan
-;11 November 2024
-;Initializes and manages the game board’s data structure.
+; Yara Zrigan
+; 11 November 2024
+; Initializes and manages the game board’s data structure.
+;"initialzeBoard" clears the board  '-'
+
+.386P
+.model flat
 
 .data
-board db 25 DUP(0x2D) ; Initialize a 5x5 board with 25 cells, all empty ('-')
+board db 25 DUP('-') ; Defines board as 5x5 grid
 
-; Function to initialize the board with empty cells
-initBoard PROC
-    mov cx, 25        ; Number of cells to initialize
-    lea di, board     ; Load address of the board into DI
-fill_board:
-    mov byte ptr [di], 0x2D ; Set cell to '-'
-    inc di
-    loop fill_board
+.code
+
+;initalizes the board
+initializeBoard PROC
+    mov ecx, 25           ; Total cells (5x5), using 32-bit register (ecx)
+    lea edi, board        ; Load address of board array (use edi, 32-bit)
+clearBoardLoop:
+    mov byte ptr [edi], '-'  ; Set each cell to empty ('-')
+    inc edi                  ;Increments pointer to the next cell
+    loop clearBoardLoop      ;Repeats this until all cells are cleared
     ret
-initBoard ENDP
+initializeBoard ENDP
+
+END
